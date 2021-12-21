@@ -10,6 +10,7 @@ import { Attribute, InfoType, TxPrinciple } from './types';
 export class PolicyAdminPoint extends Contract {
     public static readonly POLICY_ID_KEY = "POL_ID"
 
+    // Initialize a set of policies used for testing.
     @Transaction()
     public async InitPolicies(ctx: Context): Promise<void> {
         var policy1 = new ContextualPolicy();
@@ -23,10 +24,6 @@ export class PolicyAdminPoint extends Contract {
         const policies = [policy1];
 
         for (const policy of policies) {
-            // example of how to write to world state deterministically
-            // use convetion of alphabetic order
-            // we insert data in alphabetic order using 'json-stringify-deterministic' and 'sort-keys-recursive'
-            // when retrieving data, in any lang, the order of data will be the same and consequently also the corresonding hash
             await this.CreatePolicy(ctx, policy);
             console.info(`Policy ${policy.id} initialized`);
         }
@@ -82,6 +79,7 @@ export class PolicyAdminPoint extends Contract {
         return allResults;
     }
 
+    // GetRelevantPolicies returns all policies relevant to a specific request.
     @Transaction(false)
     @Returns('ContextualPolicy[]')
     public async GetRelevantPolicies(ctx: Context, q: PolicyQuery): Promise<ContextualPolicy[]> {

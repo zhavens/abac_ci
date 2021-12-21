@@ -8,11 +8,11 @@ import { PolicyQuery } from './contextualPolicy';
     description: 'Smart contract for defining attributes of entities.'
 })
 export class PolicyDecisionPoint extends Contract {
-    // AddAttribution issues a new attribute to the entity to the world state.
+    // ValidateRequest evaluates a given access request specified by a set of
+    // contextual integrity parameters.
     @Transaction(false)
     @Returns('boolean0')
     public async ValidateRequest(ctx: Context, req: AccessRequest): Promise<boolean> {
-        // 
         let pap = new PolicyAdminPoint();
         let pip = new PolicyInformationPoint();
 

@@ -8,6 +8,8 @@ import { Attribute, Entity } from './types';
     description: 'Smart contract for defining attributes of entities.'
 })
 export class PolicyInformationPoint extends Contract {
+
+    // Initialize a set of Attributions used for testing.
     @Transaction()
     public async InitAttributions(ctx: Context): Promise<void> {
         const attributions: Attribution[] = [
@@ -21,10 +23,6 @@ export class PolicyInformationPoint extends Contract {
         ];
 
         for (const attribution of attributions) {
-            // example of how to write to world state deterministically
-            // use convetion of alphabetic order
-            // we insert data in alphabetic order using 'json-stringify-deterministic' and 'sort-keys-recursive'
-            // when retrieving data, in any lang, the order of data will be the same and consequently also the corresonding hash
             await ctx.stub.putState(attribution.id,
                 Buffer.from(JSON.stringify(attribution)));
             console.info(`Attribution ${attribution.id} initialized`);
@@ -98,6 +96,7 @@ export class PolicyInformationPoint extends Contract {
         return allResults.map(function (x) { return x.entity; });
     }
 
+    // Parse attribution results from a db iterator.
     async _GetAllResults(iterator: Iterators.StateQueryIterator): Promise<Attribution[]> {
         let allResults: Attribution[] = [];
         let res = await iterator.next();
