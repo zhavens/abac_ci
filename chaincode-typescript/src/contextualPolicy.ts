@@ -1,5 +1,5 @@
 import { Object, Property } from "fabric-contract-api";
-import { Entity, Identifiers, InfoType, TxPrinciple } from "./types";
+import { Attribute, Entity, Identifiers, InfoType, TxPrinciple } from "./types";
 
 @Object()
 export class ContextualPolicy {
@@ -30,4 +30,13 @@ export class ContextualPolicy {
     public allowed: boolean = false;
 
     constructor() { }
+}
+
+export class PolicyQuery {
+    public subject: Entity;
+    public sender: Entity;
+    public recipient_entity: Entity = "";
+    public recipient_attrs: Attribute[] = [];
+    public infoType: InfoType = InfoType.UNKNOWN;
+    public principle: TxPrinciple = TxPrinciple.UNKNOWN;
 }

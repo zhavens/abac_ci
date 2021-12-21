@@ -1,6 +1,7 @@
-import { Context, Contract, Info, Transaction } from 'fabric-contract-api';
+import { Context, Contract, Info, Returns, Transaction } from 'fabric-contract-api';
 import { PolicyAdminPoint, PolicyInformationPoint } from '.';
-import { AccessRequest } from './types';
+import { AccessRequest } from './accessRequest';
+import { PolicyQuery } from './contextualPolicy';
 
 @Info({
     title: 'PolicyDecisionPoint',
@@ -9,18 +10,36 @@ import { AccessRequest } from './types';
 export class PolicyDecisionPoint extends Contract {
     // AddAttribution issues a new attribute to the entity to the world state.
     @Transaction(false)
+    @Returns('boolean0')
     public async ValidateRequest(ctx: Context, req: AccessRequest): Promise<boolean> {
         // 
         let pap = new PolicyAdminPoint();
         let pip = new PolicyInformationPoint();
 
-        let sender_attrs = await pip.GetEntityAttributions(ctx, req.sender);
         let recipient_attrs = await pip.GetEntityAttributions(ctx, req.recipient);
 
-        let policies = await pap.GetAllPolicies(ctx);
+        var pq = new PolicyQuery();
+        pq.subject = req.subject;
+        pq.sender = req.sender;
+        pq.recipient_entity = req.recipient;
+        pq.recipient_attrs = recipient_attrs;
+        pq.infoType = req.infoType;
+        pq.principle = req.principle;
 
-        return false
+        let policies = await pap.GetRelevantPolicies(ctx, pq);
+
+        if (!policies || policies.length == 0) {
+            console.log("No policies found. Defaulting to rejecting access.")
+            return false;
+        }
+
+        for (let policy of policies) {
+            if (!policy.allowed) {
+                console.log(`Access rejected by policy: ${JSON.stringify(policy)}`);
+                return false;
+            }
+        }
+
+        return true;
     }
-
-
 }

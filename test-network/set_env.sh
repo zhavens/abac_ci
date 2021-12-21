@@ -43,9 +43,8 @@ else
    exit 1
 fi
 
-echo "PATH=${PWD}/../bin:$PATH"
+#echo "PATH=$PWD/../bin:$PATH"
 echo "FABRIC_CFG_PATH=$PWD/../config/"
-echo "PEER_ARGS=${PEER_ARGS}"
 
 # output the variables that need to be set
 echo "CORE_PEER_TLS_ENABLED=true"
@@ -59,3 +58,5 @@ echo "CORE_PEER_ADDRESS=${CORE_PEER_ADDRESS}"
 echo "CORE_PEER_TLS_ROOTCERT_FILE=${CORE_PEER_TLS_ROOTCERT_FILE}"
 
 echo "CORE_PEER_LOCALMSPID=${CORE_PEER_LOCALMSPID}"
+
+echo "PEER_ARGS=\"${PEER_ARGS}\""

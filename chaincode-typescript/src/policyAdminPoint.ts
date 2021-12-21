@@ -1,7 +1,6 @@
 import { Context, Contract, Info, Returns, Transaction } from 'fabric-contract-api';
 import { Iterators } from 'fabric-shim';
-import { v4 as uuidv4 } from 'uuid';
-import { ContextualPolicy } from "./contextualPolicy";
+import { ContextualPolicy, PolicyQuery } from "./contextualPolicy";
 import { Attribute, InfoType, TxPrinciple } from './types';
 
 @Info({
@@ -14,12 +13,12 @@ export class PolicyAdminPoint extends Contract {
     @Transaction()
     public async InitPolicies(ctx: Context): Promise<void> {
         var policy1 = new ContextualPolicy();
-        policy1.id = uuidv4();
         policy1.subject = "Alice";
         policy1.sender = "Hospital";
         policy1.recipients.attrs.push(Attribute.CAREGIVER);
         policy1.infoType.push(InfoType.LOW_SENSITIVITY);
         policy1.principle = TxPrinciple.NORMAL_CARE;
+        policy1.allowed = true;
 
         const policies = [policy1];
 
@@ -29,7 +28,7 @@ export class PolicyAdminPoint extends Contract {
             // we insert data in alphabetic order using 'json-stringify-deterministic' and 'sort-keys-recursive'
             // when retrieving data, in any lang, the order of data will be the same and consequently also the corresonding hash
             await this.CreatePolicy(ctx, policy);
-            console.info(`Attribute ${policy.id} initialized`);
+            console.info(`Policy ${policy.id} initialized`);
         }
     }
 
@@ -42,9 +41,9 @@ export class PolicyAdminPoint extends Contract {
             throw new Error(`A policy with ID ${policy.id} already exists. Please retry.`);
         }
 
+        await this._SetLastPolicyID(ctx, policy.id);
         await ctx.stub.putState(policy.id, Buffer.from(JSON.stringify(policy)));
-        await ctx.stub.putState(PolicyAdminPoint.POLICY_ID_KEY,
-            Buffer.from((Number.parseInt(policy.id) + 1).toString()));
+
         console.info(`Policy ${policy.id} created`);
     }
 
@@ -76,22 +75,78 @@ export class PolicyAdminPoint extends Contract {
 
     // GetAllPolicies returns all policies found in the world state.
     @Transaction(false)
-    @Returns('string')
+    @Returns('ContextualPolicy[]')
     public async GetAllPolicies(ctx: Context): Promise<ContextualPolicy[]> {
         let iterator = await ctx.stub.getQueryResult(`{"selector":{"docType":"${ContextualPolicy.DOC_TYPE}"}}`);
         let allResults = await this._GetAllResults(iterator);
         return allResults;
     }
 
+    @Transaction(false)
+    @Returns('ContextualPolicy[]')
+    public async GetRelevantPolicies(ctx: Context, q: PolicyQuery): Promise<ContextualPolicy[]> {
+        console.log(`Policy query JSON: ${JSON.stringify(q)}`);
+        var and_selectors: any[] = [
+            { "docType": ContextualPolicy.DOC_TYPE },
+            { "subject": q.subject },
+            { "sender": q.sender },
+        ];
+        if (q.infoType) {
+            and_selectors.push({ "infoType": { "$elemMatch": { "$eq": q.infoType } } });
+        }
+        if (q.principle) {
+            and_selectors.push({ "principle": q.principle });
+        }
+
+        var or_selectors = [];
+        if (q.recipient_entity) {
+            console.log("Adding entities selector.");
+            or_selectors.push({
+                "recipients.enties": {
+                    "$elemMatch": {
+                        "$eq": q.recipient_entity
+                    }
+                }
+            });
+        }
+        if (q.recipient_attrs) {
+            console.log("Adding attributes selector.");
+            or_selectors.push({
+                "recipients.attrs": {
+                    "$elemMatch": {
+                        "$in": q.recipient_attrs
+                    }
+                }
+            })
+        }
+        if (or_selectors.length > 0) {
+            console.log("Adding or selector(s).");
+            and_selectors.push({ "$or": or_selectors });
+        }
+
+        var query = { "selector": { "$and": and_selectors } };
+
+        console.log(`DB query JSON: ${JSON.stringify(query)}`);
+        let iterator = await ctx.stub.getQueryResult(JSON.stringify(query))
+        let allResults = await this._GetAllResults(iterator)
+        return allResults;
+    }
+
+    async _SetLastPolicyID(ctx: Context, id: string): Promise<void> {
+        await ctx.stub.putState(PolicyAdminPoint.POLICY_ID_KEY, Buffer.from(id));
+        console.log(`Set last policy ID: ${id}`);
+    }
+
     async _GetNextPolicyID(ctx: Context): Promise<string> {
         var raw_id = await ctx.stub.getState(PolicyAdminPoint.POLICY_ID_KEY);
-        if (!raw_id || raw_id.length < 4) {
+        var last_id = raw_id.toString();
+        if (!raw_id || !last_id) {
             console.log("No current max policy ID specified. Returning default.")
             return "1";
         }
-        let buffer = Buffer.from(raw_id);
-        var max_id = buffer.readUInt8(0);
-        return (max_id + 1).toString();
+        let next_id = (Number.parseInt(last_id) + 1).toString();
+        console.log(`Returning next policy id: ${next_id}`);
+        return next_id;
     }
 
     async _GetAllResults(iterator: Iterators.StateQueryIterator): Promise<ContextualPolicy[]> {
@@ -110,6 +165,7 @@ export class PolicyAdminPoint extends Contract {
         }
 
         iterator.close();
+        console.log(`Query results: ${allResults}`);
         return allResults;
     }
 }

@@ -1,6 +1,7 @@
 import { Context, Contract, Info, Transaction } from 'fabric-contract-api';
 import { Iterators } from 'fabric-shim';
-import { Attribute, Attribution, Entity } from './types';
+import { Attribution } from "./attribution";
+import { Attribute, Entity } from './types';
 
 @Info({
     title: 'PolicyInformationPoint',

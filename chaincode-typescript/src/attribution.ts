@@ -1,7 +1,6 @@
 import { Object, Property } from "fabric-contract-api";
 import { Attribute, Entity } from "./types";
 
-
 @Object()
 export class Attribution {
     public static readonly DOC_TYPE = "attribution";

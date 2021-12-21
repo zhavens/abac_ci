@@ -11,25 +11,36 @@ $ npm install fabric-contract-api
 
 ## Starting the Environment
 
-```shell
-$ cd test-network
+All steps below have been packaged into a single script `. reset.sh` that can be run to reset and repopulate the chain. All commands should be run from the `test-network` directory.
 
-# Start the peers as Docker containers backed by LevelDB, and create a channel
-# called "default".
-$ ./network.sh up -s couchdb createChannel -c default
+1.  Start the peers as Docker containers backed by CouchDB:
+    *   `./network.sh up -s couchdb createChannel`
+1.  Deploy the chaincode to the channel:
+    *   `./network.sh deployCC -c default -ccn policy -ccp ../chaincode-typescript -ccl typescript`
+1.  Add all the relevant environment variables locally:
+    *   `export $(./set_env.sh Org1 | xargs)`
+1.  Create initial set of attributes:
+    *   `peer chaincode invoke $PEER_ARGS -C mychannel -n policy -c '{"function":"PolicyInformationPoint:InitAttributes","Args":[]}'`
+1.  Create initial set of policies:
+    *   `peer chaincode invoke $PEER_ARGS -C mychannel -n policy -c '{"function":"PolicyAdminPoint:InitPolicies","Args":[]}'`
+1.  Test an access request:
+    *   `peer chaincode invoke $PEER_ARGS -C mychannel -n policy -c '{"Args":["PolicyDecisionPoint:ValidateRequest", "{\"subject\":\"Alice\", \"sender\": \"Hospital\", \"recipient\": \"Bob\", \"infoType\": 1, \"principle\": 1}"]}'`
 
-# Add all the relevant environment variables locally.
-$ export $(./set_env.sh Org1 | xargs)
+## Other Contract Functions
 
-$ ./network.sh deployCC -c default -ccn policy -ccp ../chaincode-typescript
-    -ccl typescript
+Most contracts take enumerable types for certain parameters. All of these are defined in `chaincode-typescript/src/types.ts`.
 
-$ peer chaincode invoke -o localhost:7050 \
-    --ordererTLSHostnameOverride orderer.example.com --tls \
-    --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" \
-    --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" \
-    --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" \
-    -C mychannel -n policy -c '{"function":"InitAttributes","Args":[]}'
-```
+### PolicyInformationPoint (PIP)
+
+*   Add new attribution with `PolicyInformationPoint:AddAttribution`:
+    *  `peer chaincode invoke $PEER_ARGS -C mychannel -n policy -c '{"Args":["PolicyInformationPoint:AddAttribution", "Carol", 5]}'`
 
 
+### PolicyAdminPoint (PAP)
+
+*   Add new policy with `PolicyAdminPoint:CreatePolicy`:
+    *  `peer chaincode invoke $PEER_ARGS -C mychannel -n policy -c '{"Args":["PolicyAdminPoint:CreatePolicy", "{\"subject\": \"Alice\", \"sender\": \"Hospital\", \"recipients\": {\"attrs\": [2,3,4]}, \"infoType\": 2, \"principle\": 2, \"allowed\": true}"]}'`
+*   Check for policy existence with `PolicyAdminPoint:PolicyExists`:
+    *  `peer chaincode invoke $PEER_ARGS -C mychannel -n policy -c '{"Args":["PolicyAdminPoint:PolicyExists", "1"]}'`
+*   Delete a policy with `PolicyAdminPoint:DeletePolicy`:
+    *  `peer chaincode invoke $PEER_ARGS -C mychannel -n policy -c '{"Args":["PolicyAdminPoint:DeletePolicy", "1"]'`
